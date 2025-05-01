@@ -1,0 +1,56 @@
+## 1. Радиочастотные системы
+1. Напишите команду в Linux, которая будет:
+ - Печатать строку "Hello, DevOps!"
+ - Записывать её в файл hello.txt в домашней директории
+ - Выводить содержимое файла на экран.
+Решение:
+`echo "Hello, DevOps!" > ~/hello.txt ; cat ~/hello.txt`
+2. Напишите команду в Linux, которая будет:
+ - Читать /var/log/syslog
+ - Искать строки с "error"
+ - Выводить 5 первых совпавших с шаблоном строк
+ - Сделать это одной командой, используя конвейеры (pipes)
+ Решение:
+ `grep -i "error" /var/log/syslog | head -5 `
+
+3. Bash/Python-скрипт
+ - Имеется следующий набор строк:
+   `name: test_server
+   `path: /home/user/data
+   `file: data.txt
+   `port: 8080
+   `log path: /var/log/app`
+ - Необходимо создать файл, записать туда эти строки и написать скрипт на bash или python, который будет искать в этом файле конкретные слова (например path) и выводить найденные строки. Передавать файл и искомое слово как параметры
+
+Решение
+ ``` 
+ #файл config.txt
+ name: test_server
+ path: /home/user/data
+ file: data.txt
+ port: 8080
+ log path: /var/log/app
+```
+
+```
+#!/bin/bash
+#скрипт, который передает файл и искомое слово как параметры
+fileName="$1"
+searchWord="$2"
+
+grep -i "$searchWord" "$fileName"
+```
+
+4. Оптимизация Dockerfile
+Сразу кину готовый dockerfile:
+
+``` 
+FROM ubuntu:latest
+RUN apt-get update && \
+	apt-get install -y wget python3 python3-pip && \
+	apt-get clean && \
+	rm -rf /var/lib/apt/lists/*
+	
+COPY search_path.sh extract_path_value.py config.txt /tmp/
+RUN chmod +x /tmp/search_path.sh /tmp/extract_path_value.py
+```
