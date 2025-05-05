@@ -1,0 +1,89 @@
+---
+- name: Install and configure Docker, then run and verify script in container
+  hosts: webservers
+  become: yes
+  vars:
+    project_root: "{{ ansible_env.HOME }}/YADROimpulse/Telecom"
+    script_name: "httprequests.py"
+    image_name: "telecom-script-image"
+    container_name: "telecom-script-container"
+  tasks:
+    - name: Check if project directory exists
+      ansible.builtin.stat:
+        path: "{{ project_root }}"
+      register: project_dir
+      failed_when: not project_dir.stat.exists
+      when: ansible_os_family == "Archlinux"
+
+    - name: Remove docker-desktop if installed
+      ansible.builtin.pacman:
+        name: docker-desktop
+        state: absent
+      when: ansible_os_family == "Archlinux"
+
+    
+    - name: Install required system packages on Arch Linux
+      ansible.builtin.pacman:
+        name:
+          - docker
+          - docker-buildx
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Archlinux"
+
+    - name: Add user to docker group
+      ansible.builtin.user:
+        name: "{{ ansible_env.USER }}"
+        groups: docker
+        append: yes
+      when: ansible_os_family == "Archlinux"
+
+    - name: Ensure Docker service is started and enabled
+      ansible.builtin.systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Check Docker version
+      ansible.builtin.command: docker --version
+      register: docker_version_output
+      changed_when: false
+
+    - name: Display Docker version
+      ansible.builtin.debug:
+        msg: "{{ docker_version_output.stdout }}"
+
+    
+    - name: Ensure script directory is present on target host
+      ansible.builtin.copy:
+        src: "{{ project_root }}/Section1/"
+        dest: "/tmp/Section1/"
+        mode: '0755'
+
+    - name: Ensure Dockerfile is present on target host
+      ansible.builtin.copy:
+        src: "{{ project_root }}/Section2/Dockerfile"
+        dest: "/tmp/Dockerfile"
+        mode: '0644'
+
+    
+    - name: Build Docker image
+      ansible.builtin.command: docker build --network=host -t {{ image_name }} /tmp
+      register: build_result
+      changed_when: build_result.rc == 0
+
+    
+    - name: Run container with the script
+      ansible.builtin.command: docker run --rm --network=host --name {{ container_name }} {{ image_name }}
+      register: container_run
+      failed_when: container_run.rc != 0
+
+  
+    - name: Display container output
+      ansible.builtin.debug:
+        msg: "Container output: {{ container_run.stdout }}"
+
+    - name: Display container errors (if any)
+      ansible.builtin.debug:
+        msg: "Container errors: {{ container_run.stderr }}"
+      when: container_run.stderr != ""
